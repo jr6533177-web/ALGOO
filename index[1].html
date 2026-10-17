@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlphaAlgo Studio - TradingView API & SaaS Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- TradingView Advanced Charting Widget API -->
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <style>
+    body { background-color: #070b14; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    .card { background-color: #0d1527; border: 1px solid #1e293b; border-radius: 0.75rem; }
+    .input-box { background-color: #070b14; border: 1px solid #334155; color: #f8fafc; border-radius: 0.5rem; padding: 0.5rem 0.75rem; width: 100%; font-size: 0.875rem; }
+    .input-box:focus { border-color: #3b82f6; outline: none; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col p-3 md:p-6 space-y-4">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b border-slate-800 gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-blue-500/20">⚡</div>
+      <div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <h1 class="text-xl font-bold tracking-tight text-white">AlphaAlgo Studio Pro</h1>
+          <span id="plan-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">FREE PLAN</span>
+          <span id="bot-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-800 text-gray-400 border border-gray-700">IDLE</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5" id="user-display">User: Guest Trader (Please Login)</p>
+      </div>
+    </div>
+
+    <!-- Navigation / Actions -->
+    <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+      <!-- Auth Button -->
+      <button id="auth-btn" onclick="openLoginModal()" class="px-3 py-2 rounded-lg font-semibold text-xs bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1.5">
+        <span>👤</span> <span id="auth-btn-text">Google Sign In</span>
+      </button>
+
+      <!-- Subscription Upgrade Button -->
+      <button onclick="openSubscriptionModal()" class="px-3.5 py-2 rounded-lg font-semibold text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black transition shadow-lg shadow-amber-900/20 flex items-center gap-1 font-bold">
+        <span>💎</span> Plans (From ₹199)
+      </button>
+
+      <!-- Promo Code Button -->
+      <button onclick="openRedeemModal()" class="px-3 py-2 rounded-lg font-semibold text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 transition">
+        🎁 Promo Code
+      </button>
+
+      <!-- Admin Console (Visible to Admin Only) -->
+      <button id="admin-nav-btn" onclick="openAdminModal()" class="hidden px-3 py-2 rounded-lg font-semibold text-xs bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-600 transition">
+        👑 Admin
+      </button>
+
+      <!-- Strategy Engine Controls -->
+      <button onclick="openStrategyModal()" class="px-3 py-2 rounded-lg font-semibold text-xs bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1">
+        <span>➕</span> Strategy
+      </button>
+      <button id="btn-toggle" onclick="toggleBot()" class="px-4 py-2 rounded-lg font-semibold text-xs bg-emerald-600 hover:bg-emerald-500 text-white transition">
+        ▶ Start
+      </button>
+      <button onclick="emergencyKill()" class="px-3 py-2 rounded-lg font-semibold text-xs bg-rose-600 hover:bg-rose-500 text-white transition">
+        🛑 Kill
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= AFFORDABLE PLAN BANNER ================= -->
+  <div id="free-plan-banner" class="bg-gradient-to-r from-amber-950/60 to-orange-950/40 border border-amber-600/40 rounded-lg p-3 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-amber-300">
+    <div class="flex items-center gap-2">
+      <span class="text-base">🚀</span>
+      <span><b>Free Plan Active:</b> Limited to 2 trades/day. Starter Pro plan ab sirf <b>₹199/month</b> me unlock karein!</span>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="openSubscriptionModal()" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded text-xs transition">
+        View Pricing (₹199)
+      </button>
+      <button onclick="openRedeemModal()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-xs border border-amber-500/30">
+        Free Code Dalein
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= METRICS BAR ================= -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div class="card p-3">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Chart Symbol</p>
+      <p id="metric-symbol" class="text-base font-bold text-white mt-0.5">NSE:NIFTY</p>
+      <p id="metric-tf" class="text-[11px] text-slate-500">Interval: 1m</p>
+    </div>
+    <div class="card p-3">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Real-Time LTP</p>
+      <p id="metric-ltp" class="text-base font-bold text-blue-400 mt-0.5">₹24,520.00</p>
+      <p id="metric-signal" class="text-[11px] font-semibold text-amber-400">SIGNAL: NEUTRAL</p>
+    </div>
+    <div class="card p-3">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Realized P&L</p>
+      <p id="metric-pnl" class="text-base font-bold text-slate-200 mt-0.5">₹0.00</p>
+      <p class="text-[11px] text-slate-500">Day's Net PnL</p>
+    </div>
+    <div class="card p-3">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Daily Trades</p>
+      <p id="metric-trades" class="text-base font-bold text-slate-200 mt-0.5">0 / 2</p>
+      <p id="trades-subtext" class="text-[11px] text-slate-500">Free Cap: 2 trades</p>
+    </div>
+    <div class="card p-3 col-span-2 md:col-span-1">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Active Strategy</p>
+      <p id="metric-active-strat" class="text-sm font-bold text-emerald-400 mt-0.5 truncate">EMA 9/21 Scalper</p>
+      <p class="text-[11px] text-slate-500">RMS Active</p>
+    </div>
+  </div>
+
+  <!-- ================= MAIN WORKSPACE ================= -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1">
+
+    <!-- Left Column: Controls & RMS (1 Col) -->
+    <div class="space-y-4">
+      
+      <!-- Chart Controls -->
+      <div class="card p-4 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-white border-b border-slate-800 pb-2 flex items-center gap-1.5">
+          <span>📈</span> TradingView Controls
+        </h3>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Asset Symbol</label>
+          <select id="sel-symbol" onchange="updateTradingViewChart()" class="input-box">
+            <optgroup label="Indian Markets (NSE)">
+              <option value="NSE:NIFTY" selected>NIFTY 50 Index</option>
+              <option value="NSE:BANKNIFTY">BANK NIFTY Index</option>
+              <option value="NSE:CNXFINANCE">FIN NIFTY</option>
+              <option value="NSE:RELIANCE">RELIANCE IND</option>
+              <option value="NSE:HDFCBANK">HDFC BANK</option>
+            </optgroup>
+            <optgroup label="Crypto & Commodities">
+              <option value="BINANCE:BTCUSDT">BTC / USDT (Crypto)</option>
+              <option value="MCX:GOLD1!">GOLD Futures (MCX)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Timeframe</label>
+          <div class="grid grid-cols-4 gap-1">
+            <button onclick="changeInterval('1')" class="tf-btn py-1 text-xs rounded bg-blue-600 text-white font-bold" data-interval="1">1m</button>
+            <button onclick="changeInterval('5')" class="tf-btn py-1 text-xs rounded bg-slate-800 text-slate-300" data-interval="5">5m</button>
+            <button onclick="changeInterval('15')" class="tf-btn py-1 text-xs rounded bg-slate-800 text-slate-300" data-interval="15">15m</button>
+            <button onclick="changeInterval('D')" class="tf-btn py-1 text-xs rounded bg-slate-800 text-slate-300" data-interval="D">1D</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RMS Controls -->
+      <div class="card p-4 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 border-b border-slate-800 pb-2">
+          🛡️ Hard RMS Limits
+        </h3>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Max Daily Loss (₹)</label>
+          <input type="number" id="cfg-maxloss" value="2000" class="input-box" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Target Profit (₹)</label>
+          <input type="number" id="cfg-target" value="4000" class="input-box" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Trailing SL (₹)</label>
+          <input type="number" id="cfg-trailsl" value="1000" class="input-box" />
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right 3 Columns: TV Chart & Strategies -->
+    <div class="lg:col-span-3 space-y-4">
+      
+      <!-- TradingView Widget -->
+      <div class="card p-3 space-y-2">
+        <div class="flex justify-between items-center px-1">
+          <h2 class="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>📊</span> TradingView Advanced Charting API
+          </h2>
+          <span class="text-[11px] text-emerald-400 font-mono">● LIVE DATA STREAM</span>
+        </div>
+        <div id="tradingview_widget_container" class="w-full h-[400px] rounded-lg overflow-hidden border border-slate-800"></div>
+      </div>
+
+      <!-- Strategy Tabs & Order Book -->
+      <div class="card p-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+          <div class="flex gap-4">
+            <button onclick="switchTab('strat-tab')" id="tab-btn-strat" class="text-xs font-bold uppercase tracking-wider text-blue-400 border-b-2 border-blue-500 pb-2">
+              🧩 Active Strategies (<span id="strat-count">2</span>)
+            </button>
+            <button onclick="switchTab('order-tab')" id="tab-btn-order" class="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white pb-2">
+              📋 Executed Orders
+            </button>
+          </div>
+          <button onclick="openStrategyModal()" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 rounded font-semibold">
+            + New Rule
+          </button>
+        </div>
+
+        <div id="strat-tab" class="space-y-2 max-h-48 overflow-y-auto"></div>
+        <div id="order-tab" class="hidden overflow-x-auto max-h-48 overflow-y-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="text-slate-400 bg-slate-900 sticky top-0">
+              <tr>
+                <th class="p-2">Time</th><th class="p-2">Symbol</th><th class="p-2">Strategy</th><th class="p-2">Type</th><th class="p-2">PnL</th><th class="p-2">Net</th>
+              </tr>
+            </thead>
+            <tbody id="trade-table-body" class="divide-y divide-slate-800 text-slate-300">
+              <tr><td colspan="6" class="p-3 text-center text-slate-500">Engine idle. Click 'Start' to trigger trades.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= 1. DYNAMIC AUTH / LOGIN MODAL ================= -->
+  <div id="auth-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+    <div class="card max-w-sm w-full p-6 space-y-4 border-blue-500/40">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">👤 Login / Google Sign In</h3>
+        <button onclick="closeModal('auth-modal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400">Apne Google account ya email se login karein strategy aur cloud execution sync ke liye.</p>
+
+      <div class="space-y-2.5">
+        <!-- 1-Click Instant Google Login Simulation -->
+        <button onclick="doGoogleLogin()" class="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 rounded-lg font-semibold text-xs flex items-center justify-center gap-2.5 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.15C3.26 21.36 7.33 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.15 0 9.92 0 12s.45 3.85 1.24 5.42l4.04-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
+          Continue with Google
+        </button>
+
+        <div class="flex items-center gap-2 text-slate-500 text-[10px] uppercase font-bold py-1">
+          <div class="flex-1 h-px bg-slate-800"></div>OR EMAIL<div class="flex-1 h-px bg-slate-800"></div>
+        </div>
+
+        <input type="text" id="login-name" placeholder="Aapka Name" class="input-box text-xs" />
+        <input type="email" id="login-email" placeholder="Email Address (e.g. jaat@gmail.com)" class="input-box text-xs" />
+
+        <button onclick="doEmailLogin()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition">
+          Sign In / Create Account
+        </button>
+
+        <button onclick="doAdminLogin()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-800 rounded-lg text-[11px] font-bold">
+          👑 Login as Master Owner / Admin
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. CHEAP / AFFORDABLE SUBSCRIPTION PRICING MODAL ================= -->
+  <div id="sub-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+    <div class="card max-w-2xl w-full p-6 space-y-5 border-amber-500/40 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">💎 Affordable Pro Subscriptions</h2>
+          <p class="text-xs text-slate-400">Sabhi traders ke budget ke mutabik affordable plans.</p>
+        </div>
+        <button onclick="closeModal('sub-modal')" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <!-- Plan Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- PLAN 1: Starter Pro (Ultra Cheap ₹199) -->
+        <div class="card p-4 space-y-3 border-slate-700 relative flex flex-col justify-between">
+          <div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">STARTER</span>
+            <h3 class="text-sm font-bold text-white mt-1">Budget Trader</h3>
+            <div class="mt-2">
+              <span class="text-2xl font-bold text-emerald-400">₹199</span>
+              <span class="text-xs text-slate-400">/ month</span>
+            </div>
+            <ul class="text-[11px] text-slate-300 space-y-1.5 mt-3">
+              <li>✓ 15 Trades per day</li>
+              <li>✓ Live TradingView Chart</li>
+              <li>✓ Custom Strategy Builder</li>
+              <li>✓ Trailing Stop-Loss</li>
+            </ul>
+          </div>
+          <button onclick="activatePlan('STARTER (₹199)')" class="w-full py-2 bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 font-bold rounded text-xs transition">
+            Choose ₹199 Plan
+          </button>
+        </div>
+
+        <!-- PLAN 2: Most Popular (₹499) -->
+        <div class="card p-4 space-y-3 border-amber-500/60 bg-slate-900/80 relative flex flex-col justify-between shadow-lg shadow-amber-950/20">
+          <div class="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">MOST POPULAR</div>
+          <div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">UNLIMITED</span>
+            <h3 class="text-sm font-bold text-white mt-1">Alpha Pro Trader</h3>
+            <div class="mt-2">
+              <span class="text-2xl font-bold text-amber-400">₹499</span>
+              <span class="text-xs text-slate-400">/ month</span>
+            </div>
+            <ul class="text-[11px] text-slate-300 space-y-1.5 mt-3">
+              <li>✓ <b>Unlimited Trades / Day</b></li>
+              <li>✓ Live Broker API Gateway</li>
+              <li>✓ Unlimited Custom Rules</li>
+              <li>✓ Advanced RMS Kill-Switch</li>
+            </ul>
+          </div>
+          <button onclick="activatePlan('PRO (₹499)')" class="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold rounded text-xs hover:opacity-90 transition">
+            Choose ₹499 Plan
+          </button>
+        </div>
+
+        <!-- PLAN 3: Lifetime Access (₹999 One Time) -->
+        <div class="card p-4 space-y-3 border-purple-500/40 relative flex flex-col justify-between">
+          <div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">LIFETIME</span>
+            <h3 class="text-sm font-bold text-white mt-1">Lifetime Pass</h3>
+            <div class="mt-2">
+              <span class="text-2xl font-bold text-purple-400">₹999</span>
+              <span class="text-xs text-slate-400">one time</span>
+            </div>
+            <ul class="text-[11px] text-slate-300 space-y-1.5 mt-3">
+              <li>✓ Lifetime Unlimited Access</li>
+              <li>✓ Saare Future Updates Free</li>
+              <li>✓ Priority Execution Latency</li>
+            </ul>
+          </div>
+          <button onclick="activatePlan('LIFETIME (₹999)')" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded text-xs transition">
+            Get Lifetime (₹999)
+          </button>
+        </div>
+
+      </div>
+
+      <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-xs text-slate-400 flex justify-between items-center">
+        <span>Kareeb ya dost ke paas promo code hai? Free me unlock karein:</span>
+        <button onclick="closeModal('sub-modal'); openRedeemModal();" class="text-amber-400 font-bold hover:underline">Redeem Code ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 3. REDEEM PROMO CODE MODAL ================= -->
+  <div id="redeem-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+    <div class="card max-w-sm w-full p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-base font-bold text-white">🎁 Free Promo Code Redeem</h3>
+        <button onclick="closeModal('redeem-modal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-400">Admin se mila hua secret code yahan enter karein bina koi paisa diye Pro plan paane ke liye.</p>
+      
+      <input type="text" id="promo-input" placeholder="e.g. VIPPASS / FREE2026" class="input-box uppercase text-center font-mono font-bold tracking-wider" />
+
+      <div class="flex gap-2">
+        <button onclick="closeModal('redeem-modal')" class="flex-1 py-2 rounded bg-slate-800 text-xs text-slate-300">Cancel</button>
+        <button onclick="redeemPromoCode()" class="flex-1 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-xs text-white font-bold">Redeem Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 4. MASTER ADMIN MODAL ================= -->
+  <div id="admin-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+    <div class="card max-w-2xl w-full p-6 space-y-4 border-purple-500/40 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">👑 Master Admin Console</h2>
+        <button onclick="closeModal('admin-modal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 text-xs">
+        <div class="bg-slate-900 p-3 rounded border border-slate-800">Total Users: <b id="adm-total" class="text-white text-base block mt-0.5">3</b></div>
+        <div class="bg-slate-900 p-3 rounded border border-slate-800">Pro Users: <b id="adm-pro" class="text-amber-400 text-base block mt-0.5">2</b></div>
+        <div class="bg-slate-900 p-3 rounded border border-slate-800">Active Codes: <b id="adm-codes" class="text-purple-400 text-base block mt-0.5">3</b></div>
+      </div>
+
+      <!-- Promo Code Creator -->
+      <div class="bg-slate-900/60 p-3.5 rounded border border-slate-800 space-y-2">
+        <label class="block text-xs text-amber-400 font-bold">Naya Free Promo Code Generate Karein:</label>
+        <div class="flex gap-2">
+          <input type="text" id="new-code-input" placeholder="CODE NAME (e.g. JAATFREE)" class="input-box uppercase font-mono text-xs" />
+          <button onclick="createPromoCode()" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded transition whitespace-nowrap">Create</button>
+        </div>
+        <div id="active-codes-pills" class="flex flex-wrap gap-1.5 pt-1 text-xs"></div>
+      </div>
+
+      <!-- Users List -->
+      <div>
+        <h4 class="text-xs font-bold uppercase text-white mb-2">Registered Users Management</h4>
+        <div class="overflow-x-auto max-h-44 border border-slate-800 rounded">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900 text-slate-400"><tr><th class="p-2">Name</th><th class="p-2">Email</th><th class="p-2">Plan</th><th class="p-2 text-right">Action</th></tr></thead>
+            <tbody id="admin-user-rows" class="divide-y divide-slate-800 text-slate-300"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 5. ADD STRATEGY MODAL ================= -->
+  <div id="strat-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+    <div class="card max-w-lg w-full p-6 space-y-4 border-indigo-500/40">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h2 class="text-base font-bold text-white">🧩 Build Custom Strategy Rule</h2>
+        <button onclick="closeModal('strat-modal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Strategy Name</label>
+          <input type="text" id="strat-name" placeholder="e.g., 9/21 EMA Trend Scalper" class="input-box" />
+        </div>
+
+        <div class="p-3 bg-slate-900/60 rounded border border-slate-800 space-y-2">
+          <span class="text-emerald-400 font-bold uppercase text-[11px]">🟢 BUY Rule</span>
+          <div class="grid grid-cols-3 gap-2">
+            <select id="buy-ind-1" class="input-box text-xs"><option>EMA_9</option><option>PRICE</option><option>RSI</option></select>
+            <select id="buy-operator" class="input-box text-xs font-bold text-center"><option>></option><option><</option></select>
+            <select id="buy-ind-2" class="input-box text-xs"><option>EMA_21</option><option>PRICE</option><option>50</option></select>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-900/60 rounded border border-slate-800 space-y-2">
+          <span class="text-rose-400 font-bold uppercase text-[11px]">🔴 SELL Rule</span>
+          <div class="grid grid-cols-3 gap-2">
+            <select id="sell-ind-1" class="input-box text-xs"><option>EMA_9</option><option>PRICE</option><option>RSI</option></select>
+            <select id="sell-operator" class="input-box text-xs font-bold text-center"><option><</option><option>></option></select>
+            <select id="sell-ind-2" class="input-box text-xs"><option>EMA_21</option><option>PRICE</option><option>50</option></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 mb-1">Target Profit (₹)</label>
+            <input type="number" id="strat-target" value="800" class="input-box" />
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">Stop-Loss (₹)</label>
+            <input type="number" id="strat-sl" value="400" class="input-box" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeModal('strat-modal')" class="flex-1 py-2 rounded bg-slate-800 text-xs text-slate-300">Cancel</button>
+        <button onclick="saveCustomStrategy()" class="flex-1 py-2 rounded bg-indigo-600 text-xs font-bold text-white">Save Strategy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APP LOGIC -->
+  <script>
+    // System Data Store
+    let users = JSON.parse(localStorage.getItem('alpha_users_v2')) || [
+      { name: 'Jaat Raj', email: 'jaatraj@gmail.com', plan: 'PRO' },
+      { name: 'Demo Trader', email: 'trader@gmail.com', plan: 'FREE' },
+      { name: 'Master Owner', email: 'admin@alphaalgo.io', plan: 'PRO' }
+    ];
+    let promoCodes = JSON.parse(localStorage.getItem('alpha_codes_v2')) || ['VIPPASS', 'FREE2026', 'JAATSPECIAL'];
+    
+    // Logged in user state
+    let currentUser = JSON.parse(localStorage.getItem('alpha_current_user')) || { name: 'Demo Trader', email: 'trader@gmail.com', plan: 'FREE' };
+    let isAdmin = currentUser.email === 'admin@alphaalgo.io';
+
+    // Trading Engine State
+    let isRunning = false;
+    let pnl = 0.0;
+    let peakPnl = 0.0;
+    let tradeCount = 0;
+    let currentLtp = 24520.0;
+    let currentTvSymbol = "NSE:NIFTY";
+    let currentInterval = "1";
+    let timer = null;
+
+    let strategies = [
+      { id: "s1", name: "EMA 9/21 Trend Scalper", buy: "EMA_9 > EMA_21", sell: "EMA_9 < EMA_21", target: 750, sl: 350, active: true },
+      { id: "s2", name: "RSI Momentum Reversal", buy: "RSI > 50", sell: "RSI < 50", target: 950, sl: 400, active: false }
+    ];
+
+    // ================= MODAL OPEN / CLOSE HANDLERS =================
+    function openLoginModal() { document.getElementById('auth-modal').classList.remove('hidden'); }
+    function openSubscriptionModal() { document.getElementById('sub-modal').classList.remove('hidden'); }
+    function openRedeemModal() { document.getElementById('redeem-modal').classList.remove('hidden'); }
+    function openStrategyModal() { document.getElementById('strat-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // ================= AUTHENTICATION =================
+    function doGoogleLogin() {
+      currentUser = { name: "Google Trader", email: "user.google@gmail.com", plan: "FREE" };
+      saveAuthAndApply();
+      closeModal('auth-modal');
+      alert("✅ Google Sign-In Successful! Welcome, Google Trader.");
+    }
+
+    function doEmailLogin() {
+      const name = document.getElementById('login-name').value.trim() || "Trader";
+      const email = document.getElementById('login-email').value.trim();
+      if (!email || !email.includes('@')) {
+        alert("Kripya valid email address enter karein!");
+        return;
+      }
+      let existing = users.find(u => u.email === email);
+      if (!existing) {
+        existing = { name, email, plan: 'FREE' };
+        users.push(existing);
+        saveDB();
+      }
+      currentUser = existing;
+      saveAuthAndApply();
+      closeModal('auth-modal');
+      alert(`✅ Welcome ${currentUser.name}! You are logged in.`);
+    }
+
+    function doAdminLogin() {
+      currentUser = { name: "Master Owner", email: "admin@alphaalgo.io", plan: "PRO" };
+      saveAuthAndApply();
+      closeModal('auth-modal');
+      alert("👑 Welcome Master Admin! Admin console is now active.");
+    }
+
+    function saveAuthAndApply() {
+      isAdmin = currentUser.email === 'admin@alphaalgo.io';
+      localStorage.setItem('alpha_current_user', JSON.stringify(currentUser));
+      updateUserUI();
+    }
+
+    function updateUserUI() {
+      document.getElementById('user-display').innerText = `Logged in: ${currentUser.name} (${currentUser.email})`;
+      document.getElementById('auth-btn-text').innerText = currentUser.name.split(' ')[0];
+      
+      const isPro = currentUser.plan !== 'FREE';
+      const badge = document.getElementById('plan-badge');
+      const banner = document.getElementById('free-plan-banner');
+      const tradesSub = document.getElementById('trades-subtext');
+
+      if (isPro) {
+        badge.innerText = `${currentUser.plan} ACTIVE`;
+        badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950 text-amber-300 border border-amber-800';
+        banner.classList.add('hidden');
+        tradesSub.innerText = 'Unlimited Pro Trades';
+        document.getElementById('metric-trades').innerText = `${tradeCount} / ∞`;
+      } else {
+        badge.innerText = 'FREE PLAN';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700';
+        banner.classList.remove('hidden');
+        tradesSub.innerText = 'Free Cap: 2 trades';
+        document.getElementById('metric-trades').innerText = `${tradeCount} / 2`;
+      }
+
+      if (isAdmin) {
+        document.getElementById('admin-nav-btn').classList.remove('hidden');
+      } else {
+        document.getElementById('admin-nav-btn').classList.add('hidden');
+      }
+    }
+
+    // ================= SUBSCRIPTIONS & PROMO CODES =================
+    function activatePlan(planName) {
+      currentUser.plan = planName;
+      saveAuthAndApply();
+      // Update DB
+      const idx = users.findIndex(u => u.email === currentUser.email);
+      if (idx !== -1) users[idx].plan = planName;
+      saveDB();
+      closeModal('sub-modal');
+      alert(`🎉 Mubarak! Aapka ${planName} plan activate ho gaya hai! Unlimited features unlock ho chuke hain.`);
+    }
+
+    function redeemPromoCode() {
+      const code = document.getElementById('promo-input').value.trim().toUpperCase();
+      if (promoCodes.includes(code)) {
+        currentUser.plan = 'PRO (FREE PASS)';
+        saveAuthAndApply();
+        const idx = users.findIndex(u => u.email === currentUser.email);
+        if (idx !== -1) users[idx].plan = 'PRO';
+        saveDB();
+        closeModal('redeem-modal');
+        alert("🎉 Code successfully applied! Free PRO access alot kar diya gaya hai.");
+      } else {
+        alert("❌ Galat promo code! Admin se sahi code lein.");
+      }
+    }
+
+    // ================= ADMIN CONSOLE =================
+    function openAdminModal() {
+      document.getElementById('adm-total').innerText = users.length;
+      document.getElementById('adm-pro').innerText = users.filter(u => u.plan !== 'FREE').length;
+      document.getElementById('adm-codes').innerText = promoCodes.length;
+
+      document.getElementById('active-codes-pills').innerHTML = promoCodes.map(c => `
+        <span class="px-2 py-0.5 bg-amber-950 text-amber-300 border border-amber-800 rounded font-mono font-bold">${c}</span>
+      `).join('');
+
+      document.getElementById('admin-user-rows').innerHTML = users.map(u => `
+        <tr>
+          <td class="p-2 font-semibold text-white">${u.name}</td>
+          <td class="p-2 text-slate-400 font-mono">${u.email}</td>
+          <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] ${u.plan !== 'FREE' ? 'bg-amber-950 text-amber-300' : 'bg-slate-800 text-slate-400'}">${u.plan}</span></td>
+          <td class="p-2 text-right">
+            ${u.plan === 'FREE' ? `<button onclick="adminGrantPro('${u.email}')" class="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold">Grant Free Pro</button>` : `<button onclick="adminRevokePro('${u.email}')" class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px]">Set Free</button>`}
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('admin-modal').classList.remove('hidden');
+    }
+
+    function adminGrantPro(email) {
+      const u = users.find(x => x.email === email);
+      if (u) { u.plan = 'PRO'; saveDB(); openAdminModal(); if (currentUser.email === email) { currentUser.plan = 'PRO'; updateUserUI(); } }
+    }
+    function adminRevokePro(email) {
+      const u = users.find(x => x.email === email);
+      if (u) { u.plan = 'FREE'; saveDB(); openAdminModal(); if (currentUser.email === email) { currentUser.plan = 'FREE'; updateUserUI(); } }
+    }
+    function createPromoCode() {
+      const c = document.getElementById('new-code-input').value.trim().toUpperCase();
+      if (c && !promoCodes.includes(c)) {
+        promoCodes.push(c);
+        saveDB();
+        openAdminModal();
+        document.getElementById('new-code-input').value = '';
+        alert(`✅ Naya Promo code create hua: ${c}`);
+      }
+    }
+
+    function saveDB() {
+      localStorage.setItem('alpha_users_v2', JSON.stringify(users));
+      localStorage.setItem('alpha_codes_v2', JSON.stringify(promoCodes));
+    }
+
+    // ================= TRADINGVIEW ADVANCED WIDGET API =================
+    function initTradingView(symbol, interval) {
+      document.getElementById('tradingview_widget_container').innerHTML = '';
+      new TradingView.widget({
+        "autosize": true,
+        "symbol": symbol,
+        "interval": interval,
+        "timezone": "Asia/Kolkata",
+        "theme": "dark",
+        "style": "1",
+        "locale": "in",
+        "toolbar_bg": "#0d1527",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "hide_side_toolbar": false,
+        "container_id": "tradingview_widget_container",
+        "studies": ["MASimple@tv-basicstudies", "RSI@tv-basicstudies"]
+      });
+      document.getElementById('metric-symbol').innerText = symbol;
+      document.getElementById('metric-tf').innerText = `Interval: ${interval === 'D' ? 'Daily' : interval + 'm'}`;
+    }
+
+    function updateTradingViewChart() {
+      currentTvSymbol = document.getElementById('sel-symbol').value;
+      initTradingView(currentTvSymbol, currentInterval);
+    }
+
+    function changeInterval(intVal) {
+      currentInterval = intVal;
+      document.querySelectorAll('.tf-btn').forEach(b => {
+        b.className = b.getAttribute('data-interval') === intVal ? 
+          "tf-btn py-1 text-xs rounded bg-blue-600 text-white font-bold" : 
+          "tf-btn py-1 text-xs rounded bg-slate-800 text-slate-300";
+      });
+      initTradingView(currentTvSymbol, currentInterval);
+    }
+
+    // ================= STRATEGY BUILDER =================
+    function switchTab(t) {
+      if (t === 'strat-tab') {
+        document.getElementById('strat-tab').classList.remove('hidden');
+        document.getElementById('order-tab').classList.add('hidden');
+        document.getElementById('tab-btn-strat').className = "text-xs font-bold uppercase tracking-wider text-blue-400 border-b-2 border-blue-500 pb-2";
+        document.getElementById('tab-btn-order').className = "text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white pb-2";
+      } else {
+        document.getElementById('strat-tab').classList.add('hidden');
+        document.getElementById('order-tab').classList.remove('hidden');
+        document.getElementById('tab-btn-order').className = "text-xs font-bold uppercase tracking-wider text-blue-400 border-b-2 border-blue-500 pb-2";
+        document.getElementById('tab-btn-strat').className = "text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white pb-2";
+      }
+    }
+
+    function saveCustomStrategy() {
+      const name = document.getElementById('strat-name').value.trim() || `Strategy ${strategies.length + 1}`;
+      const buy1 = document.getElementById('buy-ind-1').value;
+      const buyOp = document.getElementById('buy-operator').value;
+      const buy2 = document.getElementById('buy-ind-2').value;
+      const sell1 = document.getElementById('sell-ind-1').value;
+      const sellOp = document.getElementById('sell-operator').value;
+      const sell2 = document.getElementById('sell-ind-2').value;
+      const target = parseFloat(document.getElementById('strat-target').value) || 800;
+      const sl = parseFloat(document.getElementById('strat-sl').value) || 400;
+
+      strategies.forEach(s => s.active = false);
+      strategies.unshift({
+        id: `s_${Date.now()}`,
+        name: name,
+        buy: `${buy1} ${buyOp} ${buy2}`,
+        sell: `${sell1} ${sellOp} ${sell2}`,
+        target: target,
+        sl: sl,
+        active: true
+      });
+
+      renderStrategiesList();
+      closeModal('strat-modal');
+      alert(`✅ Strategy "${name}" saved and activated!`);
+    }
+
+    function renderStrategiesList() {
+      const container = document.getElementById('strat-tab');
+      document.getElementById('strat-count').innerText = strategies.length;
+      const activeOne = strategies.find(s => s.active);
+      document.getElementById('metric-active-strat').innerText = activeOne ? activeOne.name : "None (Paused)";
+
+      container.innerHTML = strategies.map(s => `
+        <div class="p-2.5 rounded-lg border ${s.active ? 'bg-indigo-950/30 border-indigo-500/40' : 'bg-slate-900/40 border-slate-800'} flex items-center justify-between text-xs">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${s.name}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${s.active ? 'bg-emerald-950 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${s.active ? 'ACTIVE' : 'IDLE'}</span>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono mt-0.5">🟢 ${s.buy} | 🔴 ${s.sell} | Target: ₹${s.target} | SL: ₹${s.sl}</div>
+          </div>
+          <button onclick="toggleStrat('${s.id}')" class="px-2 py-1 rounded text-[11px] font-bold ${s.active ? 'bg-amber-600 text-black' : 'bg-emerald-600 text-white'}">${s.active ? 'Pause' : 'Activate'}</button>
+        </div>
+      `).join('');
+    }
+
+    function toggleStrat(id) {
+      strategies.forEach(s => { if (s.id === id) s.active = !s.active; });
+      renderStrategiesList();
+    }
+
+    // ================= ENGINE & RMS EXECUTION =================
+    function toggleBot() { isRunning ? stopBot("Strategy Paused") : startBot(); }
+
+    function startBot() {
+      if (currentUser.plan === 'FREE' && tradeCount >= 2) {
+        alert("⚠️ Free Tier limit (2 trades/day) reached! Pro plan activate karein ya promo code use karein.");
+        return;
+      }
+      isRunning = true;
+      document.getElementById('bot-badge').className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800";
+      document.getElementById('bot-badge').innerText = "RUNNING";
+      document.getElementById('btn-toggle').innerText = "⏸ Pause";
+      timer = setInterval(tick, 1000);
+    }
+
+    function stopBot(msg) {
+      isRunning = false;
+      clearInterval(timer);
+      document.getElementById('bot-badge').className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-800 text-gray-400 border border-gray-700";
+      document.getElementById('bot-badge').innerText = "IDLE";
+      document.getElementById('btn-toggle').innerText = "▶ Start";
+      if (msg) alert(msg);
+    }
+
+    function emergencyKill() { stopBot("🛑 EMERGENCY KILL SWITCH ACTIVATED!"); }
+
+    function tick() {
+      const maxLoss = parseFloat(document.getElementById('cfg-maxloss').value) || 2000;
+      const targetProfit = parseFloat(document.getElementById('cfg-target').value) || 4000;
+      const trail = parseFloat(document.getElementById('cfg-trailsl').value) || 1000;
+
+      const delta = (Math.random() - 0.49) * 8;
+      currentLtp = +(currentLtp + delta).toFixed(2);
+      document.getElementById('metric-ltp').innerText = `₹${currentLtp.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+      let signal = delta > 2.5 ? "BUY SIGNAL" : (delta < -2.5 ? "SELL SIGNAL" : "NEUTRAL");
+      const sigElem = document.getElementById('metric-signal');
+      sigElem.innerText = `SIGNAL: ${signal}`;
+      sigElem.className = signal.includes("BUY") ? "text-[11px] font-semibold text-emerald-400" :
+                          signal.includes("SELL") ? "text-[11px] font-semibold text-rose-400" : "text-[11px] font-semibold text-amber-400";
+
+      const maxTrades = currentUser.plan !== 'FREE' ? 9999 : 2;
+      const activeStrat = strategies.find(s => s.active);
+
+      if (signal !== "NEUTRAL" && activeStrat && Math.random() < 0.28 && tradeCount < maxTrades) {
+        executeTrade(activeStrat, signal.includes("BUY") ? "BUY" : "SELL");
+      }
+
+      if (pnl <= -maxLoss) stopBot(`🚨 RMS TRIGGER: Max Loss Limit Hit (-₹${maxLoss})!`);
+      else if (pnl >= targetProfit) stopBot(`🎯 RMS TRIGGER: Daily Target Hit (+₹${targetProfit})!`);
+      else if (currentUser.plan === 'FREE' && tradeCount >= 2) stopBot("⚠️ Free plan 2-trade limit reached.");
+    }
+
+    function executeTrade(strat, type) {
+      tradeCount++;
+      const isWin = Math.random() < 0.65;
+      const outcome = isWin ? strat.target : -strat.sl;
+      pnl += outcome;
+      if (pnl > peakPnl) peakPnl = pnl;
+
+      document.getElementById('metric-pnl').innerText = `₹${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+      document.getElementById('metric-pnl').className = pnl >= 0 ? "text-base font-bold text-emerald-400 mt-0.5" : "text-base font-bold text-rose-400 mt-0.5";
+      document.getElementById('metric-trades').innerText = `${tradeCount} / ${currentUser.plan !== 'FREE' ? '∞' : '2'}`;
+
+      const tbody = document.getElementById('trade-table-body');
+      if (tradeCount === 1) tbody.innerHTML = '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2 font-mono text-slate-400">${new Date().toLocaleTimeString()}</td>
+        <td class="p-2 font-bold">${currentTvSymbol}</td>
+        <td class="p-2 text-indigo-300">${strat.name}</td>
+        <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${type === 'BUY' ? 'bg-emerald-950 text-emerald-400' : 'bg-rose-950 text-rose-400'}">${type}</span></td>
+        <td class="p-2 ${outcome >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-semibold">₹${outcome > 0 ? '+' : ''}${outcome.toFixed(2)}</td>
+        <td class="p-2 font-mono font-semibold">₹${pnl.toFixed(2)}</td>
+      `;
+      tbody.prepend(tr);
+    }
+
+    // On Load
+    window.addEventListener('DOMContentLoaded', () => {
+      initTradingView("NSE:NIFTY", "1");
+      renderStrategiesList();
+      updateUserUI();
+    });
+  </script>
+</body>
+</html>
